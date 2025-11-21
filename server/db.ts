@@ -1,6 +1,6 @@
 import { eq, and, desc, gte, sql, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
+import Database, { type Database as SQLiteDatabase } from "better-sqlite3";
 import { 
   InsertUser, 
   users, 
@@ -27,15 +27,29 @@ import { ENV } from './_core/env';
 
 const DB_FILE = process.env.LOCAL_DB_PATH || "proactive-outreach-crm.db";
 
-let sqlite: any = null;
+let sqlite: SQLiteDatabase | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
+
+function getSqliteInstance() {
+  if (sqlite) return sqlite;
+
+  try {
+    sqlite = new Database(DB_FILE);
+  } catch (error) {
+    console.warn(
+      `[Database] Failed to open ${DB_FILE}, using in-memory SQLite instead:`,
+      error
+    );
+    sqlite = new Database(":memory:");
+  }
+
+  return sqlite;
+}
 
 export async function getDb() {
   if (!_db) {
-    if (!sqlite) {
-      sqlite = new Database(DB_FILE);
-    }
-    _db = drizzle(sqlite);
+    const sqliteInstance = getSqliteInstance();
+    _db = drizzle(sqliteInstance);
   }
   return _db;
 }
@@ -338,13 +352,9 @@ export async function updateOutreachLog(id: number, userId: number, updates: Par
 
 export async function createDataSource(source: InsertDataSource): Promise<DataSource> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(dataSources).values(source);
-  const insertedId = Number(result[0].insertId);
-  
-  const created = await db.select().from(dataSources).where(eq(dataSources.id, insertedId)).limit(1);
-  return created[0];
+  const [created] = await db.insert(dataSources).values(source).returning();
+  return created;
 }
 
 export async function getDataSourcesByUserId(userId: number): Promise<DataSource[]> {
