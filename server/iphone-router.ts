@@ -3,7 +3,7 @@ import multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
 import { extractFromIPhoneBackup, processIPhoneData } from './iphone-extractor';
-import { createDataSource, updateDataSource } from './db';
+import { createDataSource, getDb, updateDataSource } from './db';
 import { sdk } from './_core/sdk';
 
 const router = express.Router();
@@ -30,6 +30,8 @@ router.post('/upload', upload.fields([
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    await getDb();
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     
