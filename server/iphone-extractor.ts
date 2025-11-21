@@ -182,6 +182,8 @@ export async function processIPhoneData(
   messages: ExtractedMessage[],
   calls: ExtractedCall[]
 ): Promise<{ matched: number; unmatched: number }> {
+  await db.getDb();
+
   let matched = 0;
   let unmatched = 0;
 
