@@ -1,6 +1,8 @@
 import { eq, and, desc, gte, sql, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
+import fs from "node:fs";
+import path from "node:path";
 import { 
   InsertUser, 
   users, 
@@ -25,19 +27,35 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
-const DB_FILE = process.env.LOCAL_DB_PATH || "proactive-outreach-crm.db";
+const DB_FILE = process.env.LOCAL_DB_PATH || path.resolve(process.cwd(), "proactive-outreach-crm.db");
 
-let sqlite: any = null;
+let sqlite: Database.Database | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 
-export async function getDb() {
+function initializeDatabase() {
   if (!_db) {
+    const directory = path.dirname(DB_FILE);
+
+    if (!fs.existsSync(directory)) {
+      fs.mkdirSync(directory, { recursive: true });
+    }
+
     if (!sqlite) {
       sqlite = new Database(DB_FILE);
     }
+
     _db = drizzle(sqlite);
   }
+
+  if (!_db) {
+    throw new Error("Failed to initialize database");
+  }
+
   return _db;
+}
+
+export async function getDb() {
+  return initializeDatabase();
 }
 
 // ============================================================================
