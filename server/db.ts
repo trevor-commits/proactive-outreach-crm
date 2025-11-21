@@ -27,17 +27,22 @@ import { ENV } from './_core/env';
 
 const DB_FILE = process.env.LOCAL_DB_PATH || "proactive-outreach-crm.db";
 
-let sqlite: any = null;
+let sqlite: Database.Database | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 
 export async function getDb() {
-  if (!_db) {
+  if (_db) return _db;
+
+  try {
     if (!sqlite) {
       sqlite = new Database(DB_FILE);
     }
     _db = drizzle(sqlite);
+    return _db;
+  } catch (error) {
+    console.error("[Database] Failed to initialize:", error);
+    throw error;
   }
-  return _db;
 }
 
 // ============================================================================
