@@ -1,5 +1,6 @@
 import { eq, and, desc, gte, sql, or } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
 import { 
   InsertUser, 
   users, 
@@ -24,16 +25,17 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
+const DB_FILE = process.env.LOCAL_DB_PATH || "proactive-outreach-crm.db";
+
+let sqlite: any = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
+  if (!_db) {
+    if (!sqlite) {
+      sqlite = new Database(DB_FILE);
     }
+    _db = drizzle(sqlite);
   }
   return _db;
 }
@@ -92,7 +94,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -118,13 +121,9 @@ export async function getUserByOpenId(openId: string) {
 
 export async function createCustomer(customer: InsertCustomer): Promise<Customer> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(customers).values(customer);
-  const insertedId = Number(result[0].insertId);
-  
-  const created = await db.select().from(customers).where(eq(customers.id, insertedId)).limit(1);
-  return created[0];
+  const [created] = await db.insert(customers).values(customer).returning();
+  return created;
 }
 
 export async function getCustomersByUserId(userId: number): Promise<Customer[]> {
@@ -191,13 +190,9 @@ export async function findCustomerByEmail(email: string, userId: number): Promis
 
 export async function createInteraction(interaction: InsertInteraction): Promise<Interaction> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(interactions).values(interaction);
-  const insertedId = Number(result[0].insertId);
-  
-  const created = await db.select().from(interactions).where(eq(interactions.id, insertedId)).limit(1);
-  return created[0];
+  const [created] = await db.insert(interactions).values(interaction).returning();
+  return created;
 }
 
 export async function getInteractionsByCustomerId(customerId: number, userId: number): Promise<Interaction[]> {
@@ -238,13 +233,9 @@ export async function getLastInteractionDate(customerId: number, userId: number)
 
 export async function createService(service: InsertService): Promise<Service> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(services).values(service);
-  const insertedId = Number(result[0].insertId);
-  
-  const created = await db.select().from(services).where(eq(services.id, insertedId)).limit(1);
-  return created[0];
+  const [created] = await db.insert(services).values(service).returning();
+  return created;
 }
 
 export async function getServicesByCustomerId(customerId: number, userId: number): Promise<Service[]> {
