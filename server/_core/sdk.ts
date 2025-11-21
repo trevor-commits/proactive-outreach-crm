@@ -33,8 +33,7 @@ const GET_USER_INFO_WITH_JWT_PATH =
   `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
 
 // Dev-only bypass flag. DO NOT enable this in production.
-const LOCAL_AUTH_BYPASS =
-  process.env.LOCAL_AUTH_BYPASS === "true";
+const LOCAL_AUTH_BYPASS = ENV.localAuthBypass;
 
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {

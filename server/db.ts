@@ -1,5 +1,6 @@
 import { eq, and, desc, gte, sql, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
+import path from "path";
 import Database from "better-sqlite3";
 import { 
   InsertUser, 
@@ -25,7 +26,10 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
-const DB_FILE = process.env.LOCAL_DB_PATH || "proactive-outreach-crm.db";
+const DB_FILE =
+  ENV.localDbPath && ENV.localDbPath.length > 0
+    ? ENV.localDbPath
+    : path.resolve(process.cwd(), "proactive-outreach-crm.db");
 
 let sqlite: any = null;
 let _db: ReturnType<typeof drizzle> | null = null;
