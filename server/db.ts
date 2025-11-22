@@ -29,23 +29,25 @@ import { ENV } from './_core/env';
 
 const DB_FILE = process.env.LOCAL_DB_PATH || path.resolve(process.cwd(), "proactive-outreach-crm.db");
 
-let sqlite: Database.Database | null = null;
-let _db: ReturnType<typeof drizzle> | null = null;
+let sqlite: Database.Database | undefined;
+let _db: ReturnType<typeof drizzle> | undefined;
 
-function initializeDatabase() {
-  if (!_db) {
-    const directory = path.dirname(DB_FILE);
-
-    if (!fs.existsSync(directory)) {
-      fs.mkdirSync(directory, { recursive: true });
-    }
-
-    if (!sqlite) {
-      sqlite = new Database(DB_FILE);
-    }
-
-    _db = drizzle(sqlite);
+function initializeDatabase(): ReturnType<typeof drizzle> {
+  if (_db) {
+    return _db;
   }
+
+  const directory = path.dirname(DB_FILE);
+
+  if (!fs.existsSync(directory)) {
+    fs.mkdirSync(directory, { recursive: true });
+  }
+
+  if (!sqlite) {
+    sqlite = new Database(DB_FILE);
+  }
+
+  _db = drizzle(sqlite);
 
   if (!_db) {
     throw new Error("Failed to initialize database");
@@ -54,7 +56,7 @@ function initializeDatabase() {
   return _db;
 }
 
-export async function getDb() {
+export function getDb(): ReturnType<typeof drizzle> {
   return initializeDatabase();
 }
 
