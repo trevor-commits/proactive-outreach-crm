@@ -273,15 +273,20 @@ class SDKServer {
         "[Auth] LOCAL_AUTH_BYPASS=true – skipping cookie verification and using local dev user"
       );
 
-      const signedInAt = new Date();
-
-      return {
+      await db.upsertUser({
         openId: "local-dev-user",
         name: "Local Dev User",
         email: "local-dev@example.com",
         loginMethod: "local-dev",
         lastSignedIn: signedInAt,
-      } as any;
+      });
+
+      const user = await db.getUserByOpenId("local-dev-user");
+      if (!user) {
+        throw new Error("Failed to create local dev user");
+      }
+
+      return user;
     }
     // ---------- END LOCAL DEV AUTH BYPASS ----------
 
