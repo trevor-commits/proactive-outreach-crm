@@ -16,9 +16,9 @@ const upload = multer({
   },
 });
 
-const ensureDatabase: express.RequestHandler = (_, res, next) => {
+const ensureDatabase: express.RequestHandler = async (_, res, next) => {
   try {
-    getDb();
+    await getDb();
     next();
   } catch (error) {
     console.error('Database initialization failed:', error);

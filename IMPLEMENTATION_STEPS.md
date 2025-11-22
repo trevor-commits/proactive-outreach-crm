@@ -1,29 +1,30 @@
 # Deployment Fix Implementation Steps
 
-Follow these steps to apply and verify the fix for environments running Node 22 where native bindings are not prebuilt.
+Use these steps to validate the iPhone import path now that it relies on `sql.js` (no native bindings) and the main database is MySQL via `DATABASE_URL`.
 
 ## Step-by-Step Instructions
-1. Run `pnpm approve-builds` to allow native compilation for dependencies.
-2. Rebuild `better-sqlite3` so the native binding is compiled for Node 22: `pnpm rebuild better-sqlite3`.
-3. Start the dev server to confirm the application boots: `pnpm dev`.
-4. Upload a test iPhone backup to ensure the upload flow still works end-to-end.
+1. Ensure `DATABASE_URL` points to a reachable MySQL instance.
+2. Install dependencies: `pnpm install`.
+3. Run tests: `pnpm test`.
+4. Start the dev server: `pnpm dev`.
+5. Upload a test iPhone backup (sms.db and CallHistory.storedata) and confirm the import succeeds.
 
 ## PR Text Template
-Paste this into the PR body after completing the checks:
 
 ### Summary
-- Rebuild native dependencies for Node 22 compatibility.
-- Confirm iPhone backup upload still works end-to-end.
+- Use `sql.js` for reading uploaded iPhone SQLite backups in-memory.
+- Keep the primary app database on MySQL via `drizzle-orm/mysql2`.
 
 ### Root Cause
-- `better-sqlite3` native binding was not built for Node 22, causing runtime failures.
+- Native `better-sqlite3` bindings were unavailable in the runtime environment, causing upload failures.
 
 ### Fix
-- Approved native builds and rebuilt `better-sqlite3` for Node 22.
-- Verified the application by running the dev server and performing the iPhone upload test.
+- Removed `better-sqlite3` usage and dependency.
+- Ensured iPhone parsing runs on `sql.js` without native bindings.
+- Confirmed MySQL connectivity via `DATABASE_URL`.
 
 ### Verification
-- `pnpm approve-builds`
-- `pnpm rebuild better-sqlite3`
+- `pnpm install`
+- `pnpm test`
 - `pnpm dev`
-- Confirm iPhone backup upload succeeds
+- Upload iPhone backup and confirm success

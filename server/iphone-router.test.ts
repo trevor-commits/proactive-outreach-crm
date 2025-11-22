@@ -16,6 +16,7 @@ const authenticateRequest = vi.fn(async () => ({ id: 1 }));
 
 vi.mock('./db', () => ({
   createDataSource,
+  getDb: vi.fn(async () => ({})),
   updateDataSource,
 }));
 

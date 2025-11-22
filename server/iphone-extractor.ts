@@ -1,6 +1,6 @@
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
+import { createRequire } from 'node:module';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as db from './db';
 
 export interface ExtractedMessage {
@@ -24,10 +24,14 @@ export interface ExtractionResult {
 
 // Lazy-load SQL.js instance
 let SQL: any = null;
+const require = createRequire(import.meta.url);
 
 async function getSqlInstance() {
   if (!SQL) {
-    SQL = await initSqlJs();
+    const wasmPath = require.resolve('sql.js/dist/sql-wasm.wasm');
+    SQL = await initSqlJs({
+      locateFile: () => wasmPath,
+    });
   }
   return SQL;
 }
