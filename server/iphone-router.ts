@@ -16,11 +16,24 @@ const upload = multer({
   },
 });
 
+const ensureDatabase: express.RequestHandler = (_, res, next) => {
+  try {
+    getDb();
+    next();
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+    res.status(500).json({
+      error: 'Database unavailable',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
 /**
  * Upload iPhone backup databases (sms.db and CallHistory.storedata)
  * Expects multipart/form-data with files: smsDb and callHistoryDb
  */
-router.post('/upload', upload.fields([
+router.post('/upload', ensureDatabase, upload.fields([
   { name: 'smsDb', maxCount: 1 },
   { name: 'callHistoryDb', maxCount: 1 }
 ]), async (req, res) => {
@@ -30,8 +43,6 @@ router.post('/upload', upload.fields([
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-
-    await getDb();
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     
