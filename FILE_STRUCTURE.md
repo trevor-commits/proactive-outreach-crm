@@ -325,7 +325,7 @@ proactive-outreach-crm/
 - Drizzle ORM
 - Tailwind CSS 4
 - shadcn/ui components
-- better-sqlite3 (iPhone parsing)
+- sql.js (iPhone parsing)
 - googleapis (Google integration)
 - multer (file uploads)
 - date-fns (date formatting)

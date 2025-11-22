@@ -1,55 +1,46 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const originalCwd = process.cwd();
-const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "po-crm-"));
-const databasePaths: string[] = [];
+const createPoolMock = vi.fn();
+const drizzleMock = vi.fn();
 
-vi.mock("better-sqlite3", () => {
-  class MockDatabase {
-    filename: string;
+vi.mock("mysql2/promise", () => ({
+  default: {
+    createPool: createPoolMock,
+  },
+  createPool: createPoolMock,
+}));
 
-    constructor(filename: string) {
-      this.filename = filename;
-      databasePaths.push(filename);
-    }
-
-    prepare = vi.fn();
-
-    exec = vi.fn();
-
-    transaction = vi.fn();
-  }
-
-  return { default: MockDatabase };
-});
+vi.mock("drizzle-orm/mysql2", () => ({
+  drizzle: drizzleMock,
+}));
 
 beforeEach(() => {
   vi.resetModules();
+  vi.clearAllMocks();
   vi.unstubAllEnvs();
-  process.chdir(originalCwd);
-  databasePaths.length = 0;
 });
 
 describe("getDb", () => {
-  test("initializes sqlite using LOCAL_DB_PATH and returns drizzle client", async () => {
-    const dbPath = path.join(tempDir, `local-${Date.now()}.db`);
-    vi.stubEnv("LOCAL_DB_PATH", dbPath);
+  test("throws when DATABASE_URL is missing", async () => {
+    vi.stubEnv("DATABASE_URL", "");
     const { getDb } = await import("./db");
-    const db = await getDb();
-    expect(db).toBeTruthy();
-    expect(databasePaths[0]).toBe(path.resolve(dbPath));
+    await expect(getDb()).rejects.toThrow("DATABASE_URL is not configured");
   });
 
-  test("falls back to default local db path when unset", async () => {
-    process.chdir(tempDir);
+  test("initializes drizzle with mysql2 pool and reuses the instance", async () => {
+    vi.stubEnv("DATABASE_URL", "mysql://user:pass@localhost:3306/testdb");
+    const dbInstance = { marker: "db" };
+    drizzleMock.mockReturnValue(dbInstance);
+
     const { getDb } = await import("./db");
-    const db = await getDb();
-    expect(db).toBeTruthy();
-    expect(databasePaths[0]).toBe(
-      path.resolve(tempDir, "proactive-outreach-crm.db")
-    );
+
+    const first = await getDb();
+    const second = await getDb();
+
+    expect(createPoolMock).toHaveBeenCalledTimes(1);
+    expect(createPoolMock).toHaveBeenCalledWith("mysql://user:pass@localhost:3306/testdb");
+    expect(drizzleMock).toHaveBeenCalledTimes(1);
+    expect(first).toBe(dbInstance);
+    expect(second).toBe(dbInstance);
   });
 });

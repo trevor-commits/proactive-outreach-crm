@@ -1,8 +1,6 @@
-import { eq, and, desc, gte, sql, or } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
-import fs from "node:fs";
-import path from "node:path";
+import { and, desc, eq } from "drizzle-orm";
+import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
+import mysql, { type Pool } from "mysql2/promise";
 import { 
   InsertUser, 
   users, 
@@ -27,24 +25,30 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
-const DB_FILE = process.env.LOCAL_DB_PATH || path.resolve(process.cwd(), "proactive-outreach-crm.db");
+let pool: Pool | null = null;
+let _db: MySql2Database | null = null;
 
-let sqlite: Database.Database | null = null;
-let _db: ReturnType<typeof drizzle> | null = null;
+function extractInsertId(result: unknown) {
+  const value = Array.isArray(result) ? result[0] : result;
+  const insertId = (value as { insertId?: number | bigint }).insertId;
+  if (typeof insertId === "bigint") {
+    return Number(insertId);
+  }
+  if (typeof insertId !== "number") {
+    throw new Error("Failed to retrieve insertId");
+  }
+  return insertId;
+}
 
 function initializeDatabase() {
   if (!_db) {
-    const directory = path.dirname(DB_FILE);
-
-    if (!fs.existsSync(directory)) {
-      fs.mkdirSync(directory, { recursive: true });
+    const connectionString = ENV.databaseUrl;
+    if (!connectionString) {
+      throw new Error("DATABASE_URL is not configured");
     }
 
-    if (!sqlite) {
-      sqlite = new Database(DB_FILE);
-    }
-
-    _db = drizzle(sqlite);
+    pool = mysql.createPool(connectionString);
+    _db = drizzle(pool);
   }
 
   if (!_db) {
@@ -112,8 +116,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onConflictDoUpdate({
-      target: users.openId,
+    await db.insert(users).values(values).onDuplicateKeyUpdate({
       set: updateSet,
     });
   } catch (error) {
@@ -140,8 +143,10 @@ export async function getUserByOpenId(openId: string) {
 export async function createCustomer(customer: InsertCustomer): Promise<Customer> {
   const db = await getDb();
 
-  const [created] = await db.insert(customers).values(customer).returning();
-  return created;
+  const result = await db.insert(customers).values(customer);
+  const insertedId = extractInsertId(result);
+  const created = await db.select().from(customers).where(eq(customers.id, insertedId)).limit(1);
+  return created[0];
 }
 
 export async function getCustomersByUserId(userId: number): Promise<Customer[]> {
@@ -209,8 +214,10 @@ export async function findCustomerByEmail(email: string, userId: number): Promis
 export async function createInteraction(interaction: InsertInteraction): Promise<Interaction> {
   const db = await getDb();
 
-  const [created] = await db.insert(interactions).values(interaction).returning();
-  return created;
+  const result = await db.insert(interactions).values(interaction);
+  const insertedId = extractInsertId(result);
+  const created = await db.select().from(interactions).where(eq(interactions.id, insertedId)).limit(1);
+  return created[0];
 }
 
 export async function getInteractionsByCustomerId(customerId: number, userId: number): Promise<Interaction[]> {
@@ -252,8 +259,10 @@ export async function getLastInteractionDate(customerId: number, userId: number)
 export async function createService(service: InsertService): Promise<Service> {
   const db = await getDb();
 
-  const [created] = await db.insert(services).values(service).returning();
-  return created;
+  const result = await db.insert(services).values(service);
+  const insertedId = extractInsertId(result);
+  const created = await db.select().from(services).where(eq(services.id, insertedId)).limit(1);
+  return created[0];
 }
 
 export async function getServicesByCustomerId(customerId: number, userId: number): Promise<Service[]> {
@@ -302,7 +311,7 @@ export async function createOutreachLog(log: InsertOutreachLog): Promise<Outreac
   if (!db) throw new Error("Database not available");
 
   const result = await db.insert(outreachLogs).values(log);
-  const insertedId = Number(result[0].insertId);
+  const insertedId = extractInsertId(result);
   
   const created = await db.select().from(outreachLogs).where(eq(outreachLogs.id, insertedId)).limit(1);
   return created[0];
@@ -359,7 +368,7 @@ export async function createDataSource(source: InsertDataSource): Promise<DataSo
   if (!db) throw new Error("Database not available");
 
   const result = await db.insert(dataSources).values(source);
-  const insertedId = Number(result[0].insertId);
+  const insertedId = extractInsertId(result);
   
   const created = await db.select().from(dataSources).where(eq(dataSources.id, insertedId)).limit(1);
   return created[0];
