@@ -1,11 +1,11 @@
 import { eq, and, desc, gte, sql, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
-import { 
-  InsertUser, 
-  users, 
-  customers, 
-  InsertCustomer, 
+import {
+  InsertUser,
+  users,
+  customers,
+  InsertCustomer,
   Customer,
   interactions,
   InsertInteraction,
@@ -23,9 +23,9 @@ import {
   InsertGoogleCredential,
   GoogleCredential
 } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { ENV, resolveDatabasePath } from "./_core/env";
 
-const DB_FILE = process.env.LOCAL_DB_PATH || "proactive-outreach-crm.db";
+const DB_FILE = resolveDatabasePath();
 
 let sqlite: any = null;
 let _db: ReturnType<typeof drizzle> | null = null;
