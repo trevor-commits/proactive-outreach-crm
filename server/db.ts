@@ -1,13 +1,13 @@
 import { eq, and, desc, gte, sql, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
-import { 
-  InsertUser, 
-  users, 
-  customers, 
-  InsertCustomer, 
+import type Database from "better-sqlite3";
+import {
+  InsertUser,
+  users,
+  customers,
+  InsertCustomer,
   Customer,
   interactions,
   InsertInteraction,
@@ -32,7 +32,24 @@ const DB_FILE = process.env.LOCAL_DB_PATH || path.resolve(process.cwd(), "proact
 let sqlite: Database.Database | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 
-function initializeDatabase() {
+let betterSqlite3: typeof Database | null = null;
+
+async function loadBetterSqlite3() {
+  if (betterSqlite3) {
+    return betterSqlite3;
+  }
+
+  try {
+    const module = await import("better-sqlite3");
+    betterSqlite3 = module.default;
+    return betterSqlite3;
+  } catch (error) {
+    const message = "Failed to load better-sqlite3. Run `pnpm approve-builds` and `pnpm rebuild better-sqlite3` to rebuild native bindings.";
+    throw new Error(message, { cause: error instanceof Error ? error : undefined });
+  }
+}
+
+async function initializeDatabase() {
   if (!_db) {
     const directory = path.dirname(DB_FILE);
 
@@ -41,7 +58,8 @@ function initializeDatabase() {
     }
 
     if (!sqlite) {
-      sqlite = new Database(DB_FILE);
+      const DatabaseModule = await loadBetterSqlite3();
+      sqlite = new DatabaseModule(DB_FILE);
     }
 
     _db = drizzle(sqlite);

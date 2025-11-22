@@ -10,7 +10,8 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:push": "drizzle-kit generate && drizzle-kit migrate"
+    "db:push": "drizzle-kit generate && drizzle-kit migrate",
+    "postinstall": "pnpm approve-builds && pnpm rebuild better-sqlite3"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
