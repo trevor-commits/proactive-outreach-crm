@@ -23,7 +23,7 @@ import {
   InsertGoogleCredential,
   GoogleCredential
 } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { ENV } from "./_core/env";
 
 let pool: Pool | null = null;
 let _db: MySql2Database | null = null;
